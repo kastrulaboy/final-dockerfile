@@ -42,7 +42,7 @@ jobs:
       id: meta
       uses: docker/metadata-action@v5.5.1
       with:
-        images: <Docker ID>/my-app
+        images: ${{ secrets.DOCKER_USERNAME }}/my-app
 
     - name: Build and push Docker Image
       uses: docker/build-push-action@v5
