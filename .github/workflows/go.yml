@@ -5,24 +5,49 @@ name: Go
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "test" ]
   pull_request:
     branches: [ "main" ]
 
 jobs:
-
-  build:
+  test:
     runs-on: ubuntu-latest
+    container: golang:1.22
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Set up Go
-      uses: actions/setup-go@v4
+      - name: Run Unit Tests
+        run: GOOS=linux GOARCH=amd64 go test
+
+      - name: Vet
+        run: go vet ./...
+
+  delivery:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+    - name: checkout
+      uses: actions/checkout@v4
+
+    - name: install docker
+      uses: docker/setup-buildx-action@v3
+
+    - name: delivery
+      uses: docker/login-action@v3
       with:
-        go-version: '1.23'
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_TOKEN }}
+      
+    - name: Extract metadata (tags, labels) for Docker
+      id: meta
+      uses: docker/metadata-action@v5.5.1
+      with:
+        images: <Docker ID>/my-app
 
-    - name: Build
-      run: go build -v ./...
-
-    - name: Test
-      run: go test -v ./...
+    - name: Build and push Docker Image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
